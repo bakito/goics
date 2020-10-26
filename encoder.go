@@ -22,6 +22,7 @@ func NewComponent() *Component {
 	return &Component{
 		Elements:   make([]Componenter, 0),
 		Properties: make(map[string]string),
+		Unquoted:   make(map[string]bool),
 	}
 }
 
@@ -31,6 +32,7 @@ type Component struct {
 	Tipo       string
 	Elements   []Componenter
 	Properties map[string]string
+	Unquoted   map[string]bool
 }
 
 // Writes the component to the Writer
@@ -45,7 +47,11 @@ func (c *Component) Write(w *ICalEncode) {
 	sort.Strings(keys)
 	for _, key := range keys {
 		val := c.Properties[key]
-		w.WriteLine(WriteStringField(key, val))
+		if _, ok := c.Unquoted[key]; ok {
+			w.WriteLine(WriteUnquotedStringField(key, val))
+		} else {
+			w.WriteLine(WriteStringField(key, val))
+		}
 	}
 
 	for _, xc := range c.Elements {
@@ -70,6 +76,12 @@ func (c *Component) AddComponent(cc Componenter) {
 // AddProperty ads a property to the component
 func (c *Component) AddProperty(key string, val string) {
 	c.Properties[key] = val
+}
+
+// AddProperty ads a property to the component
+func (c *Component) AddPropertyUnquoted(key string, val string) {
+	c.Properties[key] = val
+	c.Unquoted[key] = true
 }
 
 // ICalEncode is the real writer, that wraps every line,
@@ -137,6 +149,11 @@ func FormatDateTime(key string, val time.Time) (string, string) {
 // WriteStringField UID:asdfasdfаs@dfasdf.com
 func WriteStringField(key string, val string) string {
 	return strings.ToUpper(key) + ":" + quoteString(val) + CRLF
+}
+
+// WriteUnquotedStringField UID:asdfasdfаs@dfasdf.com
+func WriteUnquotedStringField(key string, val string) string {
+	return strings.ToUpper(key) + ":" + val + CRLF
 }
 
 func quoteString(s string) string {
